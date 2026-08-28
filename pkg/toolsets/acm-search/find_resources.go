@@ -75,8 +75,8 @@ func initFindResources() []api.ServerTool {
 				Name:        "acm_find_resources",
 				Description: "Find and analyze Kubernetes resources across all ACM managed clusters with filtering, counting, and health analysis",
 				Annotations: api.ToolAnnotations{
-					Title:        "ACM: Find Resources",
-					ReadOnlyHint: ptr.To(true),
+					Title:         "ACM: Find Resources",
+					ReadOnlyHint:  ptr.To(true),
 					OpenWorldHint: ptr.To(true),
 				},
 				InputSchema: &jsonschema.Schema{
@@ -84,6 +84,10 @@ func initFindResources() []api.ServerTool {
 					Properties: map[string]*jsonschema.Schema{
 						"kind": {
 							Description: "Resource kind(s) to search for, e.g. \"Pod\" or [\"Pod\", \"Service\"]",
+							OneOf: []*jsonschema.Schema{
+								{Type: "string"},
+								{Type: "array", Items: &jsonschema.Schema{Type: "string"}},
+							},
 						},
 						"name": {
 							Type:        "string",
@@ -91,9 +95,17 @@ func initFindResources() []api.ServerTool {
 						},
 						"namespace": {
 							Description: "Namespace(s) to search in, e.g. \"default\" or [\"default\", \"kube-system\"]",
+							OneOf: []*jsonschema.Schema{
+								{Type: "string"},
+								{Type: "array", Items: &jsonschema.Schema{Type: "string"}},
+							},
 						},
 						"cluster": {
 							Description: "Target cluster(s) to search in, e.g. \"prod-cluster\" or [\"prod\", \"staging\"]",
+							OneOf: []*jsonschema.Schema{
+								{Type: "string"},
+								{Type: "array", Items: &jsonschema.Schema{Type: "string"}},
+							},
 						},
 						"labelSelector": {
 							Type:        "string",
@@ -105,6 +117,10 @@ func initFindResources() []api.ServerTool {
 						},
 						"status": {
 							Description: "Resource status(es) to filter by, e.g. \"Running\" or [\"Failed\", \"Pending\"]",
+							OneOf: []*jsonschema.Schema{
+								{Type: "string"},
+								{Type: "array", Items: &jsonschema.Schema{Type: "string"}},
+							},
 						},
 						"textSearch": {
 							Type:        "string",

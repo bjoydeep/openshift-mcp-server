@@ -6,7 +6,9 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/stolostron/search-mcp-server/pkg/database"
 	"github.com/stolostron/search-mcp-server/pkg/sqlbuilder"
+	"github.com/stolostron/search-mcp-server/pkg/types"
 )
 
 // CrossResourceFilter represents a filter condition for cross-resource queries
@@ -256,25 +258,40 @@ func GetSupportedFilterFields() []string {
 	}
 }
 
-// FindMatchingClusters finds clusters matching the cluster selector
-func FindMatchingClusters(ctx context.Context, clusterSelector string, dbQueries interface{}) ([]string, error) {
-	// For now, implement a simple placeholder that parses the selector but doesn't execute queries
-	// This would need to be integrated with actual database queries in a real implementation
-
-	// Parse the label selector to validate it
-	_, err := ParseLabelSelector(clusterSelector)
+// FindMatchingClusters finds clusters whose labels match the given Kubernetes label selector.
+// It queries the ACM search database for ManagedCluster resources and returns their names.
+func FindMatchingClusters(ctx context.Context, clusterSelector string, dbQueries *database.DatabaseQueries) ([]string, error) {
+	selectors, err := ParseLabelSelector(clusterSelector)
 	if err != nil {
 		return nil, fmt.Errorf("invalid cluster selector: %w", err)
 	}
 
-	// TODO: Implement actual database query execution
-	// This would involve:
-	// 1. Building SQL to find ManagedCluster resources
-	// 2. Adding label selector conditions using LabelSelectorsToSQL
-	// 3. Executing the query and extracting cluster names
-	//
-	// For now, return empty list for testing/compilation
-	return []string{}, nil
+	builder := sqlbuilder.NewSQLBuilder(1)
+	builder.AddCondition("data->>'kind' = %s", "ManagedCluster")
+
+	if err := LabelSelectorsToSQL(selectors, "data", builder); err != nil {
+		return nil, fmt.Errorf("failed to build cluster selector SQL: %w", err)
+	}
+
+	whereClause, params := builder.BuildWhere()
+	sql := "SELECT data->>'name' FROM search.resources " + whereClause
+
+	result, err := dbQueries.ExecuteQuery(ctx, sql, params, &types.QueryOptions{
+		Timeout: &[]int{10}[0],
+	})
+	if err != nil {
+		return nil, fmt.Errorf("cluster selector query failed: %w", err)
+	}
+
+	clusters := make([]string, 0, len(result.Rows))
+	for _, row := range result.Rows {
+		if len(row) > 0 {
+			if name, ok := row[0].(string); ok && name != "" {
+				clusters = append(clusters, name)
+			}
+		}
+	}
+	return clusters, nil
 }
 
 // EvaluateResourceHealth determines the health status of a resource

@@ -84,6 +84,10 @@ format: ## Format the code
 tidy: ## Tidy up the go modules
 	go mod tidy
 
+.PHONY: sync-search-mcp-server
+sync-search-mcp-server: ## Sync search-mcp-server pkg into vendor (required after local changes to ../search-mcp-server)
+	rsync -a --delete ../search-mcp-server/pkg/ vendor/github.com/stolostron/search-mcp-server/pkg/ --exclude='*_test.go'
+
 # Download and install golangci-lint if not already installed
 .PHONY: golangci-lint
 golangci-lint:

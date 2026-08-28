@@ -83,29 +83,20 @@ func initFindResources() []api.ServerTool {
 					Type: "object",
 					Properties: map[string]*jsonschema.Schema{
 						"kind": {
-							Description: "Resource kind(s) to search for, e.g. \"Pod\" or [\"Pod\", \"Service\"]",
-							OneOf: []*jsonschema.Schema{
-								{Type: "string"},
-								{Type: "array", Items: &jsonschema.Schema{Type: "string"}},
-							},
+							Type:        "string",
+							Description: "Resource kind(s) to search for. Single kind (e.g. \"Pod\") or comma-separated (e.g. \"Pod,ConfigMap,Service\")",
 						},
 						"name": {
 							Type:        "string",
 							Description: "Resource name or wildcard pattern, e.g. \"nginx*\"",
 						},
 						"namespace": {
-							Description: "Namespace(s) to search in, e.g. \"default\" or [\"default\", \"kube-system\"]",
-							OneOf: []*jsonschema.Schema{
-								{Type: "string"},
-								{Type: "array", Items: &jsonschema.Schema{Type: "string"}},
-							},
+							Type:        "string",
+							Description: "Namespace(s) to search in. Single (e.g. \"default\") or comma-separated (e.g. \"default,kube-system\")",
 						},
 						"cluster": {
-							Description: "Target cluster(s) to search in, e.g. \"prod-cluster\" or [\"prod\", \"staging\"]",
-							OneOf: []*jsonschema.Schema{
-								{Type: "string"},
-								{Type: "array", Items: &jsonschema.Schema{Type: "string"}},
-							},
+							Type:        "string",
+							Description: "Target cluster(s) to search in. Single (e.g. \"prod-cluster\") or comma-separated (e.g. \"prod,staging\")",
 						},
 						"labelSelector": {
 							Type:        "string",
@@ -116,11 +107,8 @@ func initFindResources() []api.ServerTool {
 							Description: "Filter clusters by labels, e.g. \"env=prod,cloud=AWS\"",
 						},
 						"status": {
-							Description: "Resource status(es) to filter by, e.g. \"Running\" or [\"Failed\", \"Pending\"]",
-							OneOf: []*jsonschema.Schema{
-								{Type: "string"},
-								{Type: "array", Items: &jsonschema.Schema{Type: "string"}},
-							},
+							Type:        "string",
+							Description: "Resource status(es) to filter by. Single (e.g. \"Running\") or comma-separated (e.g. \"Failed,Pending\")",
 						},
 						"textSearch": {
 							Type:        "string",
@@ -237,21 +225,42 @@ func buildUserContext(ctx context.Context, params api.ToolHandlerParams, mgr *ac
 	return userCtx, nil
 }
 
+// toStringOrSlice normalises a raw MCP value for polymorphic string-or-array fields.
+// JSON unmarshaling into map[string]any produces []interface{} for arrays, but the
+// findresources core only understands string and []string, so we convert here.
+func toStringOrSlice(v any) any {
+	switch val := v.(type) {
+	case string:
+		return val
+	case []string:
+		return val
+	case []any:
+		result := make([]string, 0, len(val))
+		for _, item := range val {
+			if s, ok := item.(string); ok {
+				result = append(result, s)
+			}
+		}
+		return result
+	}
+	return nil
+}
+
 // parseArgs maps raw MCP tool arguments to findresources.FindResourcesArgs.
 func parseArgs(raw map[string]any) findresources.FindResourcesArgs {
 	args := findresources.FindResourcesArgs{}
 
 	if v, ok := raw["kind"]; ok {
-		args.Kind = v
+		args.Kind = toStringOrSlice(v)
 	}
 	if v, ok := raw["name"].(string); ok {
 		args.Name = v
 	}
 	if v, ok := raw["namespace"]; ok {
-		args.Namespace = v
+		args.Namespace = toStringOrSlice(v)
 	}
 	if v, ok := raw["cluster"]; ok {
-		args.Cluster = v
+		args.Cluster = toStringOrSlice(v)
 	}
 	if v, ok := raw["labelSelector"].(string); ok {
 		args.LabelSelector = v
@@ -260,7 +269,7 @@ func parseArgs(raw map[string]any) findresources.FindResourcesArgs {
 		args.ClusterSelector = v
 	}
 	if v, ok := raw["status"]; ok {
-		args.Status = v
+		args.Status = toStringOrSlice(v)
 	}
 	if v, ok := raw["textSearch"].(string); ok {
 		args.TextSearch = v

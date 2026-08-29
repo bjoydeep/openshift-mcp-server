@@ -39,7 +39,7 @@ func getOrInitManager(ctx context.Context, cfg *Config) (*acmManager, error) {
 
 func initManager(ctx context.Context, cfg *Config) (*acmManager, error) {
 	dbCfg := searchconfig.DefaultConfig()
-	dbCfg.ConnectionString = cfg.DatabaseURL
+	dbCfg.ConnectionString = cfg.resolveDatabaseURL()
 
 	dbConn, err := database.NewDatabaseConnectionWithConfig(ctx, dbCfg)
 	if err != nil {

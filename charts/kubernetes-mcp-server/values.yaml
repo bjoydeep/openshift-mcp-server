@@ -307,6 +307,18 @@ metrics:
     #         expr: sum(some_metric)
     additionalRules: []
 
+# ACM Search toolset configuration.
+# When enabled, auto-discovers the ACM search database from the MultiClusterHub CR.
+acmSearch:
+  # -- Enable the acm-search toolset and database secret management.
+  enabled: false
+  # -- Auto-discover the database URL from the MultiClusterHub CR and search-postgres secret.
+  # Set to false and provide databaseUrl explicitly for non-ACM environments or helm lint.
+  autoDiscover: true
+  # -- Explicit database URL. Used when autoDiscover=false.
+  # Example: "postgresql://user:pass@search-postgres.open-cluster-management.svc:5432/search"
+  databaseUrl: ""
+
 # MCP Server configuration options. See https://github.com/containers/kubernetes-mcp-server/blob/main/pkg/config/config.go for details.
 config:
   port: "{{ .Values.service.port }}"

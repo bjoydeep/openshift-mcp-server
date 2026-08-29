@@ -60,6 +60,13 @@ spec:
             {{- toYaml . | nindent 12 }}
           {{- end }}
           env:
+            {{- if .Values.acmSearch.enabled }}
+            - name: ACM_SEARCH_DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "kubernetes-mcp-server.fullname" . }}-acm-search
+                  key: database-url
+            {{- end }}
             - name: POD_NAMESPACE
               valueFrom:
                 fieldRef:

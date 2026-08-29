@@ -12,10 +12,16 @@ import (
 	searchauth "github.com/stolostron/search-mcp-server/pkg/auth"
 )
 
+// envDatabaseURL is the environment variable name for the database URL.
+// The Helm chart populates this automatically via ACM secret auto-discovery.
+const envDatabaseURL = "ACM_SEARCH_DATABASE_URL"
+
 // Config holds ACM search toolset configuration.
 type Config struct {
 	// DatabaseURL is the PostgreSQL connection string for the ACM search database.
-	// Required. Example: "postgres://user:pass@host:5432/search"
+	// If not set, falls back to the ACM_SEARCH_DATABASE_URL environment variable,
+	// which is populated automatically by the Helm chart via MultiClusterHub discovery.
+	// Example: "postgres://user:pass@host:5432/search"
 	DatabaseURL string `toml:"database_url"`
 
 	// EnableAuth enables ACM RBAC enforcement.
@@ -39,9 +45,18 @@ type Config struct {
 
 var _ api.ExtendedConfig = (*Config)(nil)
 
+// resolveDatabaseURL returns the effective database URL:
+// explicit TOML config takes precedence, then the ACM_SEARCH_DATABASE_URL env var.
+func (c *Config) resolveDatabaseURL() string {
+	if c.DatabaseURL != "" {
+		return c.DatabaseURL
+	}
+	return os.Getenv(envDatabaseURL)
+}
+
 func (c *Config) Validate() error {
-	if c.DatabaseURL == "" {
-		return fmt.Errorf("acm-search toolset requires database_url")
+	if c.resolveDatabaseURL() == "" {
+		return fmt.Errorf("acm-search toolset requires database_url in config or %s env var", envDatabaseURL)
 	}
 	return nil
 }
